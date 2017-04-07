@@ -11,10 +11,10 @@ module Selection
 		new(data)
 	end
 
-	def fund_by(attribute, value)
+	def find_by(attribute, value)
 		rows = connection.execute <<-SQL
 			SELECT #{columns.join ","} FROM #{table}
-			WHERE #{attribute} = #{value};
+			WHERE #{attribute} = #{BlocRecord::Utility.sql_strings(value)};
 		SQL
 	end
 end
