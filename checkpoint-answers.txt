@@ -1,0 +1,46 @@
+Checkpoint Answers
+
+1) What's a RubyGem and why would you use one?
+
+Answer) A gem is essentially a library of code that can be added to and reused in projects.  This allows you to build functionality or extend existing functionality.  This also helps to make code in projects more concise and readable be hiding the underlying, more complex code.
+
+
+2) What's the difference between lazy and eager loading?
+
+Answer) The basic difference is whether something is loaded or compiled at the time of creation.  Creating a stored procedure that will connect to a database and be used to return information at a later time; this would be an example of lazy loading.  Creating an object that is connected to a database so that it is ready to be used now or at a later time to retrieve information; this would be eager loading.  You would want to use eager loading if you know you will be using the data immediately, otherwise, lazy loading uses less resources.
+
+
+3) What's the difference betwee the CREATE TABLE and INSERT INTO SQL statements.  
+
+Answer) CREATE TABLE is used to create a well-defined table to be used.  The INSERT INTO, will create a table dynamically via a SELECT query.  This statement will create a table defined by the data return by the results of the SELECT statement used to create it.  This often means you cannot guarantee the length of text VARCHAR fields or the type of numeric fields.
+
+
+4) What's the difference between EXTEND and INCLUDE? When would you use one or the other?
+
+Answer) EXTEND adds methods to the class itself.  Whereas, INCLUDE adds methods to an instance of the class.  In most cases, you would extend class methods.  You would include methods to instances when it pertains to the specific instance.  In the case of the Persistance Save method, the save would would pertain to the specific record that the instance is set to.  Whereas, the class pertains to and acts on a specific table.
+
+
+5) In "persistence.rb", why do the save methods need to be instance (vs class) methods?
+
+Answer) We need to use instance methods because the class works on the table, but the instance is on a specific record that needs to be saved.  
+
+
+6) Given the Jar-Jar Blinks example earlier, what is the final SQL statement is persistence.rb's save! method?
+
+Answer) UPDATE Character SET character_name = "Jar-Jar Blinks", star_rating = "1" WHERE id = self.id
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
