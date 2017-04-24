@@ -10,6 +10,12 @@ module BlocRecord
 			string.downcase
 		end
 
+		def camel_case(snake_cased_word)
+			words = snake_cased_word.split("/")
+			words.map! { |w| w.split("_").map! { |s| s.gsub!(/\A[a-z]/) { |l| l.upcase } }.join("") }
+			words.join("::")
+		end
+
 		def sql_strings(value)
 			case value
 			when String 
