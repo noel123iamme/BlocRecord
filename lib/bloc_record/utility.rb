@@ -46,5 +46,31 @@ module BlocRecord
 				dirty_obj.instance_variable_set(instance_variable, persisted_obj.instance_variable_get(instance_variable))
 			end
 		end
+
+		def valid_ids?(ids)
+			ids.each do |id|
+				if not is_pos_int?(id)
+					return false
+				end
+			end
+			true
+		end
+
+		def is_pos_int?(id)
+			if not id.is_a? Integer
+				return false
+			elsif id < 1
+				return false
+			end
+			true
+		end
+
+		def map(&block)
+			result = []
+			each do |element|
+				result << block.call(element)
+			end
+			result
+		end
 	end
 end
