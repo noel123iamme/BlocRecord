@@ -1,6 +1,16 @@
 require 'sqlite3'
 
 module Selection 
+
+	def all
+		sql = <<-SQL
+			SELECT #{columns.join ","} FROM #{table};
+		SQL
+		puts sql
+		rows = connection.execute sql
+		rows_to_array(rows)
+	end
+
 	def find(*ids)
 		if ids.length == 1
 			find_one(ids.first)
@@ -19,18 +29,6 @@ module Selection
 		end
 	end
 
-	def find_one(id)
-		if BlocRecord::Utility.is_pos_int?(id)
-			sql = <<-SQL 
-				SELECT #{columns.join ","} FROM #{table}
-				WHERE id = #{id};
-			SQL
-			puts sql
-			row = connection.get_first_row sql 
-			init_object_from_row(row)
-		end
-	end
-
 	def find_by(attribute, value)
 		sql = <<-SQL
 			SELECT #{columns.join ","} FROM #{table}
@@ -41,81 +39,7 @@ module Selection
 		init_object_from_row(row)
 	end
 
-	def take_one
-		sql = <<-SQL
-			SELECT #{columns.join ","} FROM #{table}
-			ORDER BY random()
-			LIMIT 1;
-		SQL
-		puts sql
-		row = connection.get_first_row sql
-		init_object_from_row(row)
-	end
-
-	def take(num=1)
-		if BlocRecord::Utility.is_pos_int?(num)
-			if num > 1
-				sql = <<-SQL
-					SELECT #{columns.join ","} FROM #{table}
-					ORDER BY random()
-					LIMIT #{num};
-				SQL
-				puts sql
-				rows = connection.execute sql
-				rows_to_array(rows)
-			else
-				take_one
-			end
-		else
-			puts "Invalid arg: #{num}"
-		end
-	end
-
-	def first
-		sql = <<-SQL
-			SELECT #{columns.join ","} FROM #{table}
-			ORDER BY id ASC
-			LIMIT 1;
-		SQL
-		puts sql
-		row = connection.get_first_row sql
-		init_object_from_row(row)
-	end
-
-	def last
-		sql = <<-SQL
-			SELECT #{columns.join ","} FROM #{table}
-			ORDER BY id DESC
-			LIMIT 1;
-		SQL
-		puts sql
-		row = connection.get_first_row sql
-		init_object_from_row(row)
-	end
-
-	def all
-		sql = <<-SQL
-			SELECT #{columns.join ","} FROM #{table};
-		SQL
-		puts sql
-		rows = connection.execute sql
-		rows = rows_to_array(rows)
-		# puts rows
-		rows
-	end
-
 	def find_each(options = {}, &block)
-		# offset = options.has_key?(:start) ? "OFFSET #{options[:start]}" : ""
-		# limit = options.has_key?(:batch_size) ? "LIMIT #{options[:batch_size]}" : "LIMIT #{count}" 
-		# sql = <<-SQL
-		# 	SELECT #{columns.join ","} FROM #{table}
-		# 	ORDER BY id
-		# 	#{limit} #{offset};
-		# SQL
-		# puts sql
-		# rows = connection.execute sql
-		# rows = rows_to_array(rows)
-		# yield rows if block_given?
 		if block_given?
 			find_in_batches(options) do | records, batch |
 				records.each do | record |
@@ -147,13 +71,136 @@ module Selection
 		end
 	end
 
+	def find_one(id)
+		if BlocRecord::Utility.is_pos_int?(id)
+			sql = <<-SQL 
+				SELECT #{columns.join ","} FROM #{table}
+				WHERE id = #{id};
+			SQL
+			puts sql
+			row = connection.get_first_row sql 
+			init_object_from_row(row)
+		end
+	end
+
+	def first
+		sql = <<-SQL
+			SELECT #{columns.join ","} FROM #{table}
+			ORDER BY id ASC
+			LIMIT 1;
+		SQL
+		puts sql
+		row = connection.get_first_row sql
+		init_object_from_row(row)
+	end
+
+	def join(*args)
+		if args.count > 1
+			joins = args.map { |arg| "INNER JOIN #{arg} ON #{arg}.#{table}_id = #{table}.id"}
+			sql = <<-SQL
+				SELECT * FROM #{table} #{joins}
+			SQL
+		else
+			case args.first 
+			when String 
+				sql = <<-SQL
+					SELECT * FROM #{table} #{BlocRecord::Utility.sql_strings(args.first)};
+				SQL
+			when Symbol 
+				sql = <<-SQL
+					SELECT * FROM #{table}
+					INNER JOIN #{args.first} ON #{args.first}.#{table}_id = #{table}.id
+				SQL
+			end
+		end
+		rows = connection.execute sql 
+		rows_to_array(rows)
+	end
+
+	def last
+		sql = <<-SQL
+			SELECT #{columns.join ","} FROM #{table}
+			ORDER BY id DESC
+			LIMIT 1;
+		SQL
+		puts sql
+		row = connection.get_first_row sql
+		init_object_from_row(row)
+	end
+
+	def order(*args)
+		if args.count > 1
+			order = args.join(",")
+		else
+			order = args.first.to_s
+		end
+
+		sql = <<-SQL 
+			SELECT #{columns.join ","} FROM #{table}
+			ORDER BY #{order}
+		SQL
+
+		rows = connection.execute(sql)
+		rows_to_array(rows)		
+	end
+
+	def take(num=1)
+		if BlocRecord::Utility.is_pos_int?(num)
+			if num > 1
+				sql = <<-SQL
+					SELECT #{columns.join ","} FROM #{table}
+					ORDER BY random()
+					LIMIT #{num};
+				SQL
+				puts sql
+				rows = connection.execute sql
+				rows_to_array(rows)
+			else
+				take_one
+			end
+		else
+			puts "Invalid arg: #{num}"
+		end
+	end
+
+	def take_one
+		sql = <<-SQL
+			SELECT #{columns.join ","} FROM #{table}
+			ORDER BY random()
+			LIMIT 1;
+		SQL
+		puts sql
+		row = connection.get_first_row sql
+		init_object_from_row(row)
+	end
+
+	def where(*args)
+		if args.count > 1
+			expression = args.shift
+			params = args
+		else
+			case args.first 
+			when String 
+				expression = args.first 
+			when Hash 
+				expression_hash = BlocRecord::Utility.convert_keys(args.first)
+				expression = expression_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
+			end
+		end
+
+		sql = <<-SQL 
+			SELECT #{columns.join ","} FROM #{table}
+			WHERE #{expression}
+		SQL
+
+		rows = connection.execute(sql, params)
+		rows_to_array(rows)
+	end
+
 	private 
 
 	def init_object_from_row(row)
-		if row
-			data = Hash[columns.zip(row)]
-			new(data)
-		end
+		new(Hash[columns.zip(row)]) if row
 	end
 
 	def rows_to_array(rows)
