@@ -9,6 +9,7 @@ module BlocRecord
 		end
 
 		def convert_keys(options)
+			puts options
 			options.keys.each { |k| 
 				options[k.to_s] = options.delete(k) if k.kind_of?(Symbol)
 			}
@@ -49,8 +50,12 @@ module BlocRecord
 			case value
 			when String 
 				"'#{value}'"
-			when Numeric 
+			when Numeric, Symbol 
 				value.to_s
+			when Hash 
+				order = value.keys[0].to_s
+				order += " "
+				order += value[value.keys[0]].to_s
 			else
 				"null"
 			end
