@@ -6,7 +6,7 @@ module Selection
 		sql = <<-SQL
 			SELECT #{columns.join ","} FROM #{table};
 		SQL
-		puts sql
+		# puts sql
 		rows = connection.execute sql
 		rows_to_array(rows)
 	end
@@ -20,7 +20,7 @@ module Selection
 					SELECT #{columns.join ","} FROM #{table}
 					WHERE id IN (#{ids.join(",")});
 				SQL
-				puts sql
+				# puts sql
 				rows = connection.execute sql 
 				rows_to_array(rows)
 			else
@@ -34,7 +34,7 @@ module Selection
 			SELECT #{columns.join ","} FROM #{table}
 			WHERE #{attribute} = #{BlocRecord::Utility.sql_strings(value)};
 		SQL
-		puts sql
+		# puts sql
 		row = connection.get_first_row sql 
 		init_object_from_row(row)
 	end
@@ -60,7 +60,7 @@ module Selection
 				ORDER BY id
 				LIMIT #{batch_size} OFFSET #{start};
 			SQL
-			puts sql
+			# puts sql
 			rows = connection.execute sql
 			rows = rows_to_array(rows)
 			
@@ -77,7 +77,7 @@ module Selection
 				SELECT #{columns.join ","} FROM #{table}
 				WHERE id = #{id};
 			SQL
-			puts sql
+			# puts sql
 			row = connection.get_first_row sql 
 			init_object_from_row(row)
 		end
@@ -89,32 +89,45 @@ module Selection
 			ORDER BY id ASC
 			LIMIT 1;
 		SQL
-		puts sql
+		# puts sql
 		row = connection.get_first_row sql
 		init_object_from_row(row)
 	end
 
+	# def join(*args)
+		# sql = "SELECT * FROM #{table}\n"
+		# if args.count > 1
+		# 	joins = args.map { |arg| "#{create_join_stmt(table, arg)}" }.join ""
+		# 	sql += "#{joins}"
+		# else
+		# 	arg = args.first
+		# 	case arg 
+		# 	when String 
+		# 		sql += "#{arg};"
+		# 	when Symbol, Hash 
+		# 		sql += "#{create_join_stmt(table, arg)}"
+		# 	end
+		# end
+		# sql += "ORDER BY #{table}.id ASC\n"
+		# sql += "LIMIT 1"
+		# puts sql
+		# rows = connection.execute sql 
+		# rows_to_array(rows)
+	# end
 	def join(*args)
+		@joins = ""
 		if args.count > 1
-			joins = args.map { |arg| "INNER JOIN #{arg} ON #{arg}.#{table}_id = #{table}.id"}
-			sql = <<-SQL
-				SELECT * FROM #{table} #{joins}
-			SQL
+			@joins = args.map { |arg| "#{create_join_stmt(table, arg)}" }.join ""
 		else
-			case args.first 
+			arg = args.first
+			case arg 
 			when String 
-				sql = <<-SQL
-					SELECT * FROM #{table} #{BlocRecord::Utility.sql_strings(args.first)};
-				SQL
-			when Symbol 
-				sql = <<-SQL
-					SELECT * FROM #{table}
-					INNER JOIN #{args.first} ON #{args.first}.#{table}_id = #{table}.id
-				SQL
+				@joins = "#{arg};"
+			when Symbol, Hash 
+				@joins = "#{create_join_stmt(table, arg)}"
 			end
 		end
-		rows = connection.execute sql 
-		rows_to_array(rows)
+		self
 	end
 
 	def last
@@ -123,23 +136,22 @@ module Selection
 			ORDER BY id DESC
 			LIMIT 1;
 		SQL
-		puts sql
+		# puts sql
 		row = connection.get_first_row sql
 		init_object_from_row(row)
 	end
 
 	def order(*args)
 		if args.count > 1
-			order = args.join(",")
+			order = args.map { |arg| BlocRecord::Utility.sql_strings(arg) }.join(",")
 		else
-			order = args.first.to_s
+			order = BlocRecord::Utility.sql_strings(args.first)
 		end
-
 		sql = <<-SQL 
 			SELECT #{columns.join ","} FROM #{table}
 			ORDER BY #{order}
 		SQL
-
+		# puts sql
 		rows = connection.execute(sql)
 		rows_to_array(rows)		
 	end
@@ -152,7 +164,7 @@ module Selection
 					ORDER BY random()
 					LIMIT #{num};
 				SQL
-				puts sql
+				# puts sql
 				rows = connection.execute sql
 				rows_to_array(rows)
 			else
@@ -169,7 +181,7 @@ module Selection
 			ORDER BY random()
 			LIMIT 1;
 		SQL
-		puts sql
+		# puts sql
 		row = connection.get_first_row sql
 		init_object_from_row(row)
 	end
@@ -187,12 +199,13 @@ module Selection
 				expression = expression_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
 			end
 		end
-
 		sql = <<-SQL 
-			SELECT #{columns.join ","} FROM #{table}
-			WHERE #{expression}
+			SELECT 	#{columns.map{ |c| "#{table}.#{c}" }.join ","} 
+			FROM 	#{table} 
+					#{@joins.slice(0..@joins.length-2)}
+			WHERE 	#{expression}
 		SQL
-
+		puts sql 
 		rows = connection.execute(sql, params)
 		rows_to_array(rows)
 	end
@@ -204,6 +217,22 @@ module Selection
 	end
 
 	def rows_to_array(rows)
-		rows.map { |row| new(Hash[columns.zip(row)]) }
+		rows.map { |row| init_object_from_row(row) }
+	end
+
+	def create_join_stmt(tbl, arg)
+		stmt = ""
+		if arg.is_a? Hash
+			key = arg.keys[0]
+			value = arg[key]
+			stmt = "INNER JOIN #{key} ON #{key}.#{tbl}_id = #{tbl}.id \n"
+			# puts stmt
+			stmt += create_join_stmt(key, value)
+		else
+			stmt = "INNER JOIN #{arg} ON #{arg}.#{tbl}_id = #{tbl}.id \n"
+			# puts stmt
+		end
+		# puts "stmt: #{stmt}" 
+		stmt
 	end
 end
