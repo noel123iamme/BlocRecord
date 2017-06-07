@@ -1,7 +1,6 @@
 require 'sqlite3'
 
 module Selection 
-
 	def all
 		sql = <<-SQL
 			SELECT #{columns.join ","} FROM #{table};
@@ -202,7 +201,7 @@ module Selection
 		sql = <<-SQL 
 			SELECT 	#{columns.map{ |c| "#{table}.#{c}" }.join ","} 
 			FROM 	#{table} 
-					#{@joins.slice(0..@joins.length-2)}
+					#{@joins.slice(0..@joins.length-2) unless @joins.nil?}
 			WHERE 	#{expression}
 		SQL
 		puts sql 
@@ -217,7 +216,9 @@ module Selection
 	end
 
 	def rows_to_array(rows)
-		rows.map { |row| init_object_from_row(row) }
+		collection = BlocRecord::Collection.new
+		rows.map { |row| collection << init_object_from_row(row) }
+		collection
 	end
 
 	def create_join_stmt(tbl, arg)

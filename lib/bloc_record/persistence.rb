@@ -49,5 +49,39 @@ module Persistence
 			data["id"] = connection.execute("SELECT last_insert_rowid();")[0][0]
 			new(data)
 		end
+
+		def update(ids, updates)
+			if ids.class == Fixnum
+				where_clause = "WHERE id = #{ids}"
+			elsif ids.class == Array 
+				where_clause = "WHERE id IN (#{ids.join ", "})"
+			else
+				where_clause = ""
+			end
+			updates = BlocRecord::Utility.convert_keys(updates)
+			updates.delete "id"
+			updates_array = updates.map { |key, value| "#{key} = #{BlocRecord::Utility.sql_strings(value)}" }
+			puts "updates array #{updates_array}"
+			sql = <<-SQL
+				UPDATE #{table}
+				SET    #{updates_array.join ", "}
+				#{where_clause}
+			SQL
+			self.class.connection.execute sql
+			true
+		end
+
+		def update_attribute(attribute, value)
+			self.class.update(self.id, {attribute => value})
+		end
+
+		def update_attributes(updates)
+			puts "update attributes #{updates}"
+			self.class.update(self.id, updates)
+		end
+
+		def update_all(updates)
+			update(nil, updates)
+		end
 	end
 end
