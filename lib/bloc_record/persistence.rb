@@ -26,7 +26,6 @@ module Persistence
 			SET #{fields}
 			WHERE id = #{self.id}
 		SQL
-		puts sql
 		self.class.connection.execute sql
 		
 		true
@@ -42,7 +41,6 @@ module Persistence
 				INSERT INTO #{table} (#{attributes.join ","})
 				VALUES (#{vals.join ","});
 			SQL
-			puts sql
 			connection.execute sql
 
 			data = Hash[attributes.zip attrs.values]
@@ -50,7 +48,19 @@ module Persistence
 			new(data)
 		end
 
+		# update(1, {last_name: "Johnson", address: "123 This Street"})
 		def update(ids, updates)
+			if (ids.class == Array && updates.class == Array)
+				for i in 0..updates.count - 1 do
+					update_one(ids[i], updates[i])
+				end
+			else
+				update_one(ids, updates)
+			end
+			true
+		end
+
+		def update_one(ids, updates)
 			if ids.class == Fixnum
 				where_clause = "WHERE id = #{ids}"
 			elsif ids.class == Array 
@@ -61,13 +71,12 @@ module Persistence
 			updates = BlocRecord::Utility.convert_keys(updates)
 			updates.delete "id"
 			updates_array = updates.map { |key, value| "#{key} = #{BlocRecord::Utility.sql_strings(value)}" }
-			puts "updates array #{updates_array}"
 			sql = <<-SQL
 				UPDATE #{table}
 				SET    #{updates_array.join ", "}
 				#{where_clause}
 			SQL
-			self.class.connection.execute sql
+			connection.execute sql
 			true
 		end
 
@@ -76,7 +85,6 @@ module Persistence
 		end
 
 		def update_attributes(updates)
-			puts "update attributes #{updates}"
 			self.class.update(self.id, updates)
 		end
 

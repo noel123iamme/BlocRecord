@@ -3,9 +3,8 @@ require 'sqlite3'
 module Selection 
 	def all
 		sql = <<-SQL
-			SELECT #{columns.join ","} FROM #{table};
+			SELECT #{columns.join ", "} FROM #{table};
 		SQL
-		# puts sql
 		rows = connection.execute sql
 		rows_to_array(rows)
 	end
@@ -16,10 +15,9 @@ module Selection
 		elsif ids.length > 1
 			if BlocRecord::Utility.valid_ids?(ids)
 				sql = <<-SQL
-					SELECT #{columns.join ","} FROM #{table}
-					WHERE id IN (#{ids.join(",")});
+					SELECT #{columns.join ", "} FROM #{table}
+					WHERE id IN (#{ids.join(", ")});
 				SQL
-				# puts sql
 				rows = connection.execute sql 
 				rows_to_array(rows)
 			else
@@ -30,10 +28,9 @@ module Selection
 
 	def find_by(attribute, value)
 		sql = <<-SQL
-			SELECT #{columns.join ","} FROM #{table}
+			SELECT #{columns.join ", "} FROM #{table}
 			WHERE #{attribute} = #{BlocRecord::Utility.sql_strings(value)};
 		SQL
-		# puts sql
 		row = connection.get_first_row sql 
 		init_object_from_row(row)
 	end
@@ -55,11 +52,10 @@ module Selection
 		batch = 1
 		while start < count
 			sql = <<-SQL
-				SELECT #{columns.join ","} FROM #{table}
+				SELECT #{columns.join ", "} FROM #{table}
 				ORDER BY id
 				LIMIT #{batch_size} OFFSET #{start};
 			SQL
-			# puts sql
 			rows = connection.execute sql
 			rows = rows_to_array(rows)
 			
@@ -73,10 +69,9 @@ module Selection
 	def find_one(id)
 		if BlocRecord::Utility.is_pos_int?(id)
 			sql = <<-SQL 
-				SELECT #{columns.join ","} FROM #{table}
+				SELECT #{columns.join ", "} FROM #{table}
 				WHERE id = #{id};
 			SQL
-			# puts sql
 			row = connection.get_first_row sql 
 			init_object_from_row(row)
 		end
@@ -84,35 +79,14 @@ module Selection
 
 	def first
 		sql = <<-SQL
-			SELECT #{columns.join ","} FROM #{table}
+			SELECT #{columns.join ", "} FROM #{table}
 			ORDER BY id ASC
 			LIMIT 1;
 		SQL
-		# puts sql
 		row = connection.get_first_row sql
 		init_object_from_row(row)
 	end
 
-	# def join(*args)
-		# sql = "SELECT * FROM #{table}\n"
-		# if args.count > 1
-		# 	joins = args.map { |arg| "#{create_join_stmt(table, arg)}" }.join ""
-		# 	sql += "#{joins}"
-		# else
-		# 	arg = args.first
-		# 	case arg 
-		# 	when String 
-		# 		sql += "#{arg};"
-		# 	when Symbol, Hash 
-		# 		sql += "#{create_join_stmt(table, arg)}"
-		# 	end
-		# end
-		# sql += "ORDER BY #{table}.id ASC\n"
-		# sql += "LIMIT 1"
-		# puts sql
-		# rows = connection.execute sql 
-		# rows_to_array(rows)
-	# end
 	def join(*args)
 		@joins = ""
 		if args.count > 1
@@ -131,26 +105,24 @@ module Selection
 
 	def last
 		sql = <<-SQL
-			SELECT #{columns.join ","} FROM #{table}
+			SELECT #{columns.join ", "} FROM #{table}
 			ORDER BY id DESC
 			LIMIT 1;
 		SQL
-		# puts sql
 		row = connection.get_first_row sql
 		init_object_from_row(row)
 	end
 
 	def order(*args)
 		if args.count > 1
-			order = args.map { |arg| BlocRecord::Utility.sql_strings(arg) }.join(",")
+			order = args.map { |arg| BlocRecord::Utility.sql_strings(arg) }.join(", ")
 		else
 			order = BlocRecord::Utility.sql_strings(args.first)
 		end
 		sql = <<-SQL 
-			SELECT #{columns.join ","} FROM #{table}
+			SELECT #{columns.join ", "} FROM #{table}
 			ORDER BY #{order}
 		SQL
-		# puts sql
 		rows = connection.execute(sql)
 		rows_to_array(rows)		
 	end
@@ -159,11 +131,10 @@ module Selection
 		if BlocRecord::Utility.is_pos_int?(num)
 			if num > 1
 				sql = <<-SQL
-					SELECT #{columns.join ","} FROM #{table}
+					SELECT #{columns.join ", "} FROM #{table}
 					ORDER BY random()
 					LIMIT #{num};
 				SQL
-				# puts sql
 				rows = connection.execute sql
 				rows_to_array(rows)
 			else
@@ -176,39 +147,64 @@ module Selection
 
 	def take_one
 		sql = <<-SQL
-			SELECT #{columns.join ","} FROM #{table}
+			SELECT #{columns.join ", "} FROM #{table}
 			ORDER BY random()
 			LIMIT 1;
 		SQL
-		# puts sql
 		row = connection.get_first_row sql
 		init_object_from_row(row)
 	end
 
-	def where(*args)
-		if args.count > 1
-			expression = args.shift
-			params = args
-		else
-			case args.first 
+	def where(args=[], ids={})
+		if not ids.empty?
+			and_clause = "and id in (#{ids[:ids].join ","})"
+		end
+		if not args.nil?
+			case args
+			when Array
+				expression = args.shift
+				params = args
 			when String 
-				expression = args.first 
+				expression = args 
 			when Hash 
-				expression_hash = BlocRecord::Utility.convert_keys(args.first)
-				expression = expression_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
+				expression_hash = BlocRecord::Utility.convert_keys(args)
+				expression = expression_hash.map {|key, value| "#{key} = #{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
 			end
 		end
 		sql = <<-SQL 
-			SELECT 	#{columns.map{ |c| "#{table}.#{c}" }.join ","} 
-			FROM 	#{table} 
-					#{@joins.slice(0..@joins.length-2) unless @joins.nil?}
-			WHERE 	#{expression}
+			SELECT DISTINCT #{columns.map{|c| "#{table}.#{c}"}.join ", "} 
+			FROM #{table} 
+			#{@joins.slice(0..@joins.length-2) unless @joins.nil?}
+			#{"WHERE" unless expression.nil?} #{expression}
 		SQL
-		puts sql 
 		rows = connection.execute(sql, params)
 		rows_to_array(rows)
 	end
 
+	def not(args=[], ids={})
+		if not ids.empty?
+			and_clause = "and id in (#{ids[:ids].join ","})"
+		end
+			case args
+			when Array 
+				expression = args.shift
+				params = args
+			when String 
+				expression = args 
+			when Hash 
+				expression_hash = BlocRecord::Utility.convert_keys(args)
+				expression = expression_hash.map {|key, value| "#{key} != #{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
+			end
+		sql = <<-SQL 
+			SELECT #{columns.join ", "} 
+			FROM #{table} 
+			#{@joins.slice(0..@joins.length-2) unless @joins.nil?}
+			#{"WHERE" unless expression.nil?} #{expression}
+			#{and_clause}
+		SQL
+		rows = connection.execute(sql, params)
+		rows_to_array(rows)
+	end
 	private 
 
 	def init_object_from_row(row)
@@ -227,13 +223,10 @@ module Selection
 			key = arg.keys[0]
 			value = arg[key]
 			stmt = "INNER JOIN #{key} ON #{key}.#{tbl}_id = #{tbl}.id \n"
-			# puts stmt
 			stmt += create_join_stmt(key, value)
 		else
 			stmt = "INNER JOIN #{arg} ON #{arg}.#{tbl}_id = #{tbl}.id \n"
-			# puts stmt
 		end
-		# puts "stmt: #{stmt}" 
 		stmt
 	end
 end
