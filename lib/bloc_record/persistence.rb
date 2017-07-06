@@ -31,6 +31,18 @@ module Persistence
 		true
 	end
 
+	def update_attribute(attribute, value)
+		self.class.update(self.id, {attribute => value})
+	end
+
+	def update_attributes(updates)
+		self.class.update(self.id, updates)
+	end
+
+	def destroy
+		self.class.destroy(self.id)
+	end
+
 	module ClassMethods
 		def create(attrs)
 			attrs = BlocRecord::Utility.convert_keys(attrs)
@@ -80,16 +92,40 @@ module Persistence
 			true
 		end
 
-		def update_attribute(attribute, value)
-			self.class.update(self.id, {attribute => value})
-		end
-
-		def update_attributes(updates)
-			self.class.update(self.id, updates)
-		end
-
 		def update_all(updates)
 			update(nil, updates)
+		end
+
+		def destroy(*id)
+			unless id.empty?
+				sql = <<-SQL
+					DELETE FROM #{table} 
+					WHERE id IN (#{id.join(", ")});
+				SQL
+				puts sql
+				connection.execute sql 
+				true 
+			end
+		end
+
+		def destroy_all(conditions_hash=nil)
+			unless conditions_hash.nil? || conditions_hash.empty?
+				if conditions_hash.class == Hash
+					conditions_hash = BlocRecord::Utility.convert_keys(conditions_hash)
+					conditions = conditions_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
+					where_clause = "WHERE #{conditions}"
+				elsif conditions_hash.class == String 
+					where_clause = "WHERE #{conditions_hash}"
+				elsif conditions_hash.class == Array 
+					where_clause = conditions_hash.shift
+					params = conditions_hash
+				else
+					where_clause = ""
+				end	
+				sql = "DELETE FROM #{table} #{where_clause}"
+				connection.execute(sql, params)
+				true
+			end
 		end
 	end
 end
