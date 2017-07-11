@@ -4,7 +4,6 @@ require 'active_support/inflector'
 module Associations
   def has_many(associations)
     define_method(associations) do
-      # puts self.id 
       rows = self.class.connection.execute <<-SQL 
         SELECT * FROM #{associations.to_s.singularize}
         WHERE #{self.class.table}_id = #{self.id}

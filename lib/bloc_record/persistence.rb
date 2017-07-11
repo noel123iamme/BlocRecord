@@ -77,7 +77,6 @@ module Persistence
 		end
 
 		def update_one(ids, updates)
-			puts "ids.class: #{ids.class}"
 			if ids.class == Fixnum || ids.class == String
 				where_clause = "WHERE id = #{ids}"
 			elsif ids.class == Array 
@@ -93,7 +92,6 @@ module Persistence
 				SET    #{updates_array.join ", "}
 				#{where_clause}
 			SQL
-			puts "update_one: #{sql}"
 			connection.execute sql
 			true
 		end
@@ -108,7 +106,6 @@ module Persistence
 					DELETE FROM #{table} 
 					WHERE id IN (#{id.join(", ")});
 				SQL
-				puts sql
 				connection.execute sql 
 				true 
 			end

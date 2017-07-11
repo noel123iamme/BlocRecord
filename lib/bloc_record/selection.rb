@@ -210,15 +210,10 @@ module Selection
 	private 
 
 	def init_object_from_row(row)
-		# puts "This is the row: #{row}"
 		new(Hash[columns.zip(row)]) if row
-		# [id, name, age]
-		# [3, "Jimmy", 66]
-		# [id, 3, name, "Jimmy", age, 66]
 	end
 
 	def rows_to_array(rows)
-		# puts "These are the rows: #{rows}"
 		collection = BlocRecord::Collection.new
 		rows.map { |row| collection << init_object_from_row(row) }
 		collection
