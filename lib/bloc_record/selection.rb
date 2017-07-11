@@ -29,9 +29,10 @@ module Selection
 	def find_by(attribute, value)
 		sql = <<-SQL
 			SELECT #{columns.join ", "} FROM #{table}
-			WHERE #{attribute} = #{BlocRecord::Utility.sql_strings(value)};
+			WHERE #{attribute} = #{BlocRecord::Utility.sql_strings(value)}
+			LIMIT 1;
 		SQL
-		row = connection.get_first_row sql 
+		row = connection.execute(sql )[0]
 		init_object_from_row(row)
 	end
 
@@ -70,9 +71,10 @@ module Selection
 		if BlocRecord::Utility.is_pos_int?(id)
 			sql = <<-SQL 
 				SELECT #{columns.join ", "} FROM #{table}
-				WHERE id = #{id};
+				WHERE id = #{id}
+				LIMIT 1;
 			SQL
-			row = connection.get_first_row sql 
+			row = connection.execute(sql )[0] 
 			init_object_from_row(row)
 		end
 	end
@@ -83,7 +85,7 @@ module Selection
 			ORDER BY id ASC
 			LIMIT 1;
 		SQL
-		row = connection.get_first_row sql
+		row = connection.execute(sql )[0]
 		init_object_from_row(row)
 	end
 
@@ -109,7 +111,7 @@ module Selection
 			ORDER BY id DESC
 			LIMIT 1;
 		SQL
-		row = connection.get_first_row sql
+		row = connection.execute(sql )[0]
 		init_object_from_row(row)
 	end
 
@@ -151,7 +153,7 @@ module Selection
 			ORDER BY random()
 			LIMIT 1;
 		SQL
-		row = connection.get_first_row sql
+		row = connection.execute(sql )[0]
 		init_object_from_row(row)
 	end
 
@@ -208,10 +210,15 @@ module Selection
 	private 
 
 	def init_object_from_row(row)
+		# puts "This is the row: #{row}"
 		new(Hash[columns.zip(row)]) if row
+		# [id, name, age]
+		# [3, "Jimmy", 66]
+		# [id, 3, name, "Jimmy", age, 66]
 	end
 
 	def rows_to_array(rows)
+		# puts "These are the rows: #{rows}"
 		collection = BlocRecord::Collection.new
 		rows.map { |row| collection << init_object_from_row(row) }
 		collection

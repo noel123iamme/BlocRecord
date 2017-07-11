@@ -10,6 +10,7 @@ module Schema
 		unless @schema
 			@schema = {}
 			connection.table_info(table) do |col|
+				# puts col 
 				@schema[col["name"]] = col["type"]
 			end
 		end

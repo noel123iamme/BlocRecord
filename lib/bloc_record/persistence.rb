@@ -31,6 +31,19 @@ module Persistence
 		true
 	end
 
+	def update_attribute(attribute, value)
+		self.class.update(self.id, {attribute => value})
+	end
+
+	def update_attributes(updates)
+		puts "id: #{self.id}  update_attributes: #{updates}"
+		self.class.update(self.id, updates)
+	end
+
+	def destroy
+		self.class.destroy(self.id)
+	end
+
 	module ClassMethods
 		def create(attrs)
 			attrs = BlocRecord::Utility.convert_keys(attrs)
@@ -44,7 +57,11 @@ module Persistence
 			connection.execute sql
 
 			data = Hash[attributes.zip attrs.values]
+			if BlocRecord.sqlserver == 'sqlite3'
 			data["id"] = connection.execute("SELECT last_insert_rowid();")[0][0]
+		elsif BlocRecord.sqlserver == 'pg'
+			data["id"] = connection.execute("SELECT currval(pg_get_serial_sequence('#{table}','id'));")[0][0]
+		end
 			new(data)
 		end
 
@@ -61,7 +78,8 @@ module Persistence
 		end
 
 		def update_one(ids, updates)
-			if ids.class == Fixnum
+			puts "ids.class: #{ids.class}"
+			if ids.class == Fixnum || ids.class == String
 				where_clause = "WHERE id = #{ids}"
 			elsif ids.class == Array 
 				where_clause = "WHERE id IN (#{ids.join ", "})"
@@ -76,20 +94,45 @@ module Persistence
 				SET    #{updates_array.join ", "}
 				#{where_clause}
 			SQL
+			puts "update_one: #{sql}"
 			connection.execute sql
 			true
 		end
 
-		def update_attribute(attribute, value)
-			self.class.update(self.id, {attribute => value})
-		end
-
-		def update_attributes(updates)
-			self.class.update(self.id, updates)
-		end
-
 		def update_all(updates)
 			update(nil, updates)
+		end
+
+		def destroy(*id)
+			unless id.empty?
+				sql = <<-SQL
+					DELETE FROM #{table} 
+					WHERE id IN (#{id.join(", ")});
+				SQL
+				puts sql
+				connection.execute sql 
+				true 
+			end
+		end
+
+		def destroy_all(conditions_hash=nil)
+			unless conditions_hash.nil? || conditions_hash.empty?
+				if conditions_hash.class == Hash
+					conditions_hash = BlocRecord::Utility.convert_keys(conditions_hash)
+					conditions = conditions_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
+					where_clause = "WHERE #{conditions}"
+				elsif conditions_hash.class == String 
+					where_clause = "WHERE #{conditions_hash}"
+				elsif conditions_hash.class == Array 
+					where_clause = conditions_hash.shift
+					params = conditions_hash
+				else
+					where_clause = ""
+				end	
+				sql = "DELETE FROM #{table} #{where_clause}"
+				connection.execute(sql, params)
+				true
+			end
 		end
 	end
 end

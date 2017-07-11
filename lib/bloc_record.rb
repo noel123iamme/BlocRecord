@@ -1,9 +1,13 @@
 module BlocRecord
-	def self.connect_to(filename)
-		@database_filename = filename
+	def self.connect_to(options, sqlserver)
+		@options, @sqlserver = options, sqlserver.to_s
 	end
 
-	def self.database_filename
-		@database_filename
+	def self.options
+		@options
+	end
+
+	def self.sqlserver
+		@sqlserver
 	end
 end
