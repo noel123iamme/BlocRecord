@@ -36,7 +36,6 @@ module Persistence
 	end
 
 	def update_attributes(updates)
-		puts "id: #{self.id}  update_attributes: #{updates}"
 		self.class.update(self.id, updates)
 	end
 
