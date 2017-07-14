@@ -22,9 +22,7 @@ module BlocRecord
 		end
 
 		def is_pos_int?(id)
-			if not id.is_a? Integer
-				return false
-			elsif id < 1
+			if id.to_i < 1
 				return false
 			end
 			true

@@ -56,7 +56,11 @@ module Persistence
 			connection.execute sql
 
 			data = Hash[attributes.zip attrs.values]
+			if BlocRecord.sqlserver == 'sqlite3'
 			data["id"] = connection.execute("SELECT last_insert_rowid();")[0][0]
+		elsif BlocRecord.sqlserver == 'pg'
+			data["id"] = connection.execute("SELECT currval(pg_get_serial_sequence('#{table}','id'));")[0][0]
+		end
 			new(data)
 		end
 
@@ -73,7 +77,7 @@ module Persistence
 		end
 
 		def update_one(ids, updates)
-			if ids.class == Fixnum
+			if ids.class == Fixnum || ids.class == String
 				where_clause = "WHERE id = #{ids}"
 			elsif ids.class == Array 
 				where_clause = "WHERE id IN (#{ids.join ", "})"
@@ -102,7 +106,6 @@ module Persistence
 					DELETE FROM #{table} 
 					WHERE id IN (#{id.join(", ")});
 				SQL
-				puts sql
 				connection.execute sql 
 				true 
 			end

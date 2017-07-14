@@ -33,7 +33,7 @@ module BlocRecord
 
     def destroy_all
       ids = self.map(&:id)
-      self.any? ? self.first.class.destroy_all("id in (#{ids.join(", ")})") : false
+      self.any? ? self.first.class.destroy(*ids) : false
     end
 	end
 end
